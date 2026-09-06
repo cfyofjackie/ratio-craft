@@ -93,6 +93,45 @@
   };
 
   /*
+   * 拼图：把一张图的"裁切成品"按 cover 铺满绘制到格子里（无留白）。
+   * cell = { x, y, w, h } 格子在拼图画布上的矩形；
+   * crop  = { sx, sy, cropW, cropH, rotation } 裁切区域，坐标在 source 的
+   *         （已转正）像素系中，cropW/cropH 是裁切区域宽高；
+   * imgW/imgH = source 的像素尺寸（已转正）。
+   *
+   * 变换链：格子中心 ← ×coverScale ← 平移到裁切区域中心 ← 旋转映射到原图。
+   * coverScale = max(cellW/cropW, cellH/cropH) 保证格子被完全铺满，
+   * 超出格子的部分由调用方提前 clip 或天然越界裁掉。
+   */
+  utils.drawCropIntoRect = function (ctx, source, cell, crop, imgW, imgH, clip) {
+    ctx.save();
+    if (clip) {
+      ctx.beginPath();
+      ctx.rect(cell.x, cell.y, cell.w, cell.h);
+      ctx.clip();
+    }
+    var s = Math.max(cell.w / crop.cropW, cell.h / crop.cropH);
+    ctx.translate(cell.x + cell.w / 2, cell.y + cell.h / 2);
+    ctx.scale(s, s);
+    ctx.translate(-(crop.sx + crop.cropW / 2), -(crop.sy + crop.cropH / 2));
+    var r = ((crop.rotation % 360) + 360) % 360;
+    if (r === 90) {
+      ctx.translate(imgH, 0);
+      ctx.rotate(Math.PI / 2);
+    } else if (r === 180) {
+      ctx.translate(imgW, imgH);
+      ctx.rotate(Math.PI);
+    } else if (r === 270) {
+      ctx.translate(0, imgW);
+      ctx.rotate((3 * Math.PI) / 2);
+    }
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(source, 0, 0);
+    ctx.restore();
+  };
+
+  /*
    * 按导出参数创建全分辨率离屏画布并导出 Blob。
    * JPG 不支持透明：先铺白色底（实现决策 5）；PNG 保持透明无损。
    * image 为 loadImage() 的返回值。

@@ -18,11 +18,17 @@
         <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5Zm-3 8V6a3 3 0 1 1 6 0v3H9Zm3 4a2 2 0 0 1 1 3.73V19a1 1 0 1 1-2 0v-2.27A2 2 0 0 1 12 13Z"/></svg>
         图片仅在本地处理，不会上传服务器
       </span>
+      <!-- 模式切换（实现决策：拼图二期） -->
+      <div class="mode-switch" id="modeSwitch" role="group" aria-label="模式切换">
+        <button id="cropModeBtn" class="mode-btn active" type="button">裁切</button>
+        <button id="collageModeBtn" class="mode-btn" type="button" disabled title="先在裁切模式添加图片">拼图</button>
+      </div>
       <button id="selectBtn" class="btn btn-primary" type="button">选择图片</button>
     </div>
   </header>
 
-  <div class="layout">
+  <!-- 裁切模式 -->
+  <div class="layout" id="cropView">
     <!-- 实现决策 8：批量缩略图侧边栏（桌面端左侧竖栏，手机端顶部横条），无图时隐藏 -->
     <aside class="sidebar hidden" id="sidebar">
       <button id="addImagesBtn" class="btn btn-ghost sidebar-add" type="button" title="添加图片">＋ 添加</button>
@@ -40,47 +46,92 @@
       </main>
 
       <footer class="toolbar">
+        <div class="ratio-row" id="ratioRow" role="group" aria-label="选择比例">
+          <button class="ratio-chip active" type="button" data-ratio="1:1">1:1</button>
+          <button class="ratio-chip" type="button" data-ratio="3:4">3:4</button>
+          <button class="ratio-chip" type="button" data-ratio="4:3">4:3</button>
+          <button class="ratio-chip" type="button" data-ratio="2:3">2:3</button>
+          <button class="ratio-chip" type="button" data-ratio="3:2">3:2</button>
+          <button class="ratio-chip" type="button" data-ratio="9:16">9:16</button>
+          <button class="ratio-chip" type="button" data-ratio="16:9">16:9</button>
+          <span class="custom-ratio">
+            <input id="customRatioInput" type="text" inputmode="text" placeholder="自定义 如 6:9" aria-label="自定义比例" />
+            <button id="customApplyBtn" class="btn btn-ghost btn-sm" type="button">应用</button>
+          </span>
+        </div>
 
-  <footer class="toolbar">
-    <div class="ratio-row" id="ratioRow" role="group" aria-label="选择比例">
-      <button class="ratio-chip active" type="button" data-ratio="1:1">1:1</button>
-      <button class="ratio-chip" type="button" data-ratio="3:4">3:4</button>
-      <button class="ratio-chip" type="button" data-ratio="4:3">4:3</button>
-      <button class="ratio-chip" type="button" data-ratio="2:3">2:3</button>
-      <button class="ratio-chip" type="button" data-ratio="3:2">3:2</button>
-      <button class="ratio-chip" type="button" data-ratio="9:16">9:16</button>
-      <button class="ratio-chip" type="button" data-ratio="16:9">16:9</button>
-      <span class="custom-ratio">
-        <input id="customRatioInput" type="text" inputmode="text" placeholder="自定义 如 6:9" aria-label="自定义比例" />
-        <button id="customApplyBtn" class="btn btn-ghost btn-sm" type="button">应用</button>
-      </span>
+        <div class="controls-row">
+          <div class="ops">
+            <button id="rotateBtn" class="btn btn-ghost" type="button" disabled title="顺时针旋转 90°">⟳ 旋转</button>
+            <button id="resetBtn" class="btn btn-ghost" type="button" disabled title="恢复默认位置和缩放">重置</button>
+            <button id="gridBtn" class="btn btn-ghost" type="button" title="显示/隐藏三等分构图辅助线">井字格</button>
+            <span class="zoom-ctrl">
+              <input id="zoomInput" type="text" inputmode="decimal" placeholder="倍数 如 2" aria-label="精准缩放倍数" disabled />
+              <button id="zoomApplyBtn" class="btn btn-ghost btn-sm" type="button" disabled title="按倍数缩放预览，如 2 表示放大两倍">应用</button>
+            </span>
+          </div>
+          <div class="info">
+            <span id="ratioInfo">比例：1:1</span>
+            <span id="origInfo">原图：–</span>
+            <span id="outInfo">输出：–</span>
+            <span id="zoomInfo">缩放：–</span>
+          </div>
+          <div class="exports">
+            <button id="exportJpgBtn" class="btn btn-primary" type="button" disabled>导出 JPG</button>
+            <button id="exportPngBtn" class="btn btn-outline" type="button" disabled>导出 PNG</button>
+            <!-- 实现决策 9：批量导出与指定保存位置 -->
+            <button id="exportAllBtn" class="btn btn-outline" type="button" disabled title="按每张图各自记住的状态依次导出全部图片">全部导出</button>
+            <button id="saveDirBtn" class="btn btn-ghost" type="button" hidden title="导出时直接写入选定的文件夹（Chrome / Edge 桌面端）">选择保存文件夹</button>
+          </div>
+        </div>
+      </footer>
     </div>
+  </div>
 
-    <div class="controls-row">
-      <div class="ops">
-        <button id="rotateBtn" class="btn btn-ghost" type="button" disabled title="顺时针旋转 90°">⟳ 旋转</button>
-        <button id="resetBtn" class="btn btn-ghost" type="button" disabled title="恢复默认位置和缩放">重置</button>
-        <button id="gridBtn" class="btn btn-ghost" type="button" title="显示/隐藏三等分构图辅助线">井字格</button>
-        <span class="zoom-ctrl">
-          <input id="zoomInput" type="text" inputmode="decimal" placeholder="倍数 如 2" aria-label="精准缩放倍数" disabled />
-          <button id="zoomApplyBtn" class="btn btn-ghost btn-sm" type="button" disabled title="按倍数缩放预览，如 2 表示放大两倍">应用</button>
-        </span>
-      </div>
-      <div class="info">
-        <span id="ratioInfo">比例：1:1</span>
-        <span id="origInfo">原图：–</span>
-        <span id="outInfo">输出：–</span>
-        <span id="zoomInfo">缩放：–</span>
-      </div>
-      <div class="exports">
-        <button id="exportJpgBtn" class="btn btn-primary" type="button" disabled>导出 JPG</button>
-        <button id="exportPngBtn" class="btn btn-outline" type="button" disabled>导出 PNG</button>
-        <!-- 实现决策 9：批量导出与指定保存位置 -->
-        <button id="exportAllBtn" class="btn btn-outline" type="button" disabled title="按每张图各自记住的状态依次导出全部图片">全部导出</button>
-        <button id="saveDirBtn" class="btn btn-ghost" type="button" hidden title="导出时直接写入选定的文件夹（Chrome / Edge 桌面端）">选择保存文件夹</button>
-      </div>
-    </div>
-  </footer>
+  <!-- 拼图模式（二期）：消费裁切成品，模板等分，cover 铺满 -->
+  <div class="layout hidden" id="collageView">
+    <aside class="sidebar" id="collageSidebar">
+      <button id="collageAddBtn" class="btn btn-ghost sidebar-add" type="button" title="添加图片">＋ 添加</button>
+      <div class="collage-hint">点选图片加入拼图<br />点击格子里可替换</div>
+      <button id="clearCollageBtn" class="btn btn-ghost sidebar-add" type="button">清空重选</button>
+    </aside>
+    <div class="main-col">
+      <main class="stage" id="collageStage">
+        <div class="frame-wrap" id="collageWrap">
+          <canvas id="collageCanvas"></canvas>
+          <div class="empty-hint" id="collageEmpty">
+            <p>从左侧图片库点选图片加入拼图</p>
+          </div>
+        </div>
+      </main>
+
+      <footer class="toolbar">
+        <div class="ratio-row" id="templateRow" role="group" aria-label="拼图模板">
+          <button class="ratio-chip" type="button" data-template="v2">上下两张</button>
+          <button class="ratio-chip" type="button" data-template="h2">左右两张</button>
+          <button class="ratio-chip" type="button" data-template="2x2">田字格</button>
+          <button class="ratio-chip active" type="button" data-template="3x3">九宫格</button>
+        </div>
+
+        <div class="controls-row">
+          <div class="ops">
+            <label class="gap-ctrl" title="格子之间的间距">
+              间距
+              <input id="gapInput" type="range" min="0" max="40" step="1" value="0" />
+              <span id="gapVal">0</span>
+            </label>
+          </div>
+          <div class="info">
+            <span id="collageInfo">已选 0/9</span>
+            <span id="collageOutInfo">输出：–</span>
+          </div>
+          <div class="exports">
+            <button id="exportCollageJpgBtn" class="btn btn-primary" type="button" disabled>导出拼图 JPG</button>
+            <button id="exportCollagePngBtn" class="btn btn-outline" type="button" disabled>导出拼图 PNG</button>
+            <button id="backToCropBtn" class="btn btn-ghost" type="button">返回裁切</button>
+          </div>
+        </div>
+      </footer>
     </div>
   </div>
 
