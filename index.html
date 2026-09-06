@@ -27,14 +27,19 @@
     </div>
   </header>
 
-  <!-- 裁切模式 -->
-  <div class="layout" id="cropView">
+  <!-- 两种模式共享的布局：侧边栏图片库常驻，主区随模式切换 -->
+  <div class="layout">
     <!-- 实现决策 8：批量缩略图侧边栏（桌面端左侧竖栏，手机端顶部横条），无图时隐藏 -->
     <aside class="sidebar hidden" id="sidebar">
       <button id="addImagesBtn" class="btn btn-ghost sidebar-add" type="button" title="添加图片">＋ 添加</button>
       <div class="thumb-list" id="thumbList"></div>
+      <!-- 拼图模式专属控件（实现决策：拼图二期） -->
+      <div class="collage-only hidden">
+        <div class="collage-hint">点选图片加入拼图<br />点击格子后选图可替换</div>
+        <button id="clearCollageBtn" class="btn btn-ghost sidebar-add" type="button">清空重选</button>
+      </div>
     </aside>
-    <div class="main-col">
+    <div class="main-col" id="cropMain">
       <main class="stage" id="stage">
         <div class="frame-wrap" id="frameWrap">
           <canvas id="cropCanvas"></canvas>
@@ -89,50 +94,43 @@
   </div>
 
   <!-- 拼图模式（二期）：消费裁切成品，模板等分，cover 铺满 -->
-  <div class="layout hidden" id="collageView">
-    <aside class="sidebar" id="collageSidebar">
-      <button id="collageAddBtn" class="btn btn-ghost sidebar-add" type="button" title="添加图片">＋ 添加</button>
-      <div class="collage-hint">点选图片加入拼图<br />点击格子里可替换</div>
-      <button id="clearCollageBtn" class="btn btn-ghost sidebar-add" type="button">清空重选</button>
-    </aside>
-    <div class="main-col">
-      <main class="stage" id="collageStage">
-        <div class="frame-wrap" id="collageWrap">
-          <canvas id="collageCanvas"></canvas>
-          <div class="empty-hint" id="collageEmpty">
-            <p>从左侧图片库点选图片加入拼图</p>
-          </div>
+  <div class="main-col hidden" id="collageMain">
+    <main class="stage" id="collageStage">
+      <div class="frame-wrap" id="collageWrap">
+        <canvas id="collageCanvas"></canvas>
+        <div class="empty-hint hidden" id="collageEmpty">
+          <p>从左侧图片库点选图片加入拼图</p>
         </div>
-      </main>
+      </div>
+    </main>
 
-      <footer class="toolbar">
-        <div class="ratio-row" id="templateRow" role="group" aria-label="拼图模板">
-          <button class="ratio-chip" type="button" data-template="v2">上下两张</button>
-          <button class="ratio-chip" type="button" data-template="h2">左右两张</button>
-          <button class="ratio-chip" type="button" data-template="2x2">田字格</button>
-          <button class="ratio-chip active" type="button" data-template="3x3">九宫格</button>
-        </div>
+    <footer class="toolbar">
+      <div class="ratio-row" id="templateRow" role="group" aria-label="拼图模板">
+        <button class="ratio-chip" type="button" data-template="v2">上下两张</button>
+        <button class="ratio-chip" type="button" data-template="h2">左右两张</button>
+        <button class="ratio-chip" type="button" data-template="2x2">田字格</button>
+        <button class="ratio-chip active" type="button" data-template="3x3">九宫格</button>
+      </div>
 
-        <div class="controls-row">
-          <div class="ops">
-            <label class="gap-ctrl" title="格子之间的间距">
-              间距
-              <input id="gapInput" type="range" min="0" max="40" step="1" value="0" />
-              <span id="gapVal">0</span>
-            </label>
-          </div>
-          <div class="info">
-            <span id="collageInfo">已选 0/9</span>
-            <span id="collageOutInfo">输出：–</span>
-          </div>
-          <div class="exports">
-            <button id="exportCollageJpgBtn" class="btn btn-primary" type="button" disabled>导出拼图 JPG</button>
-            <button id="exportCollagePngBtn" class="btn btn-outline" type="button" disabled>导出拼图 PNG</button>
-            <button id="backToCropBtn" class="btn btn-ghost" type="button">返回裁切</button>
-          </div>
+      <div class="controls-row">
+        <div class="ops">
+          <label class="gap-ctrl" title="格子之间的间距">
+            间距
+            <input id="gapInput" type="range" min="0" max="40" step="1" value="0" />
+            <span id="gapVal">0</span>
+          </label>
         </div>
-      </footer>
-    </div>
+        <div class="info">
+          <span id="collageInfo">已选 0/9</span>
+          <span id="collageOutInfo">输出：–</span>
+        </div>
+        <div class="exports">
+          <button id="exportCollageJpgBtn" class="btn btn-primary" type="button" disabled>导出拼图 JPG</button>
+          <button id="exportCollagePngBtn" class="btn btn-outline" type="button" disabled>导出拼图 PNG</button>
+          <button id="backToCropBtn" class="btn btn-ghost" type="button">返回裁切</button>
+        </div>
+      </div>
+    </footer>
   </div>
 
   <input type="file" id="fileInput" accept="image/*" multiple hidden />

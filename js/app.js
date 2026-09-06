@@ -70,8 +70,8 @@
     // 拼图模式
     cropModeBtn: $('cropModeBtn'),
     collageModeBtn: $('collageModeBtn'),
-    cropView: $('cropView'),
-    collageView: $('collageView'),
+    cropMain: $('cropMain'),
+    collageMain: $('collageMain'),
     collageCanvas: $('collageCanvas'),
     collageWrap: $('collageWrap'),
     collageStage: $('collageStage'),
@@ -85,8 +85,7 @@
     exportCollagePngBtn: $('exportCollagePngBtn'),
     backToCropBtn: $('backToCropBtn'),
     clearCollageBtn: $('clearCollageBtn'),
-    collageAddBtn: $('collageAddBtn'),
-    collageSidebar: $('collageSidebar'),
+    collageOnly: document.querySelector('.collage-only'),
     zoomInput: $('zoomInput'),
     zoomApplyBtn: $('zoomApplyBtn'),
     zoomInfo: $('zoomInfo'),
@@ -529,6 +528,7 @@
 
   // 删光图片后恢复初始空 UI（不调用 setImage，直接清空引擎与界面）
   function resetToEmpty() {
+    if (collageMode) exitCollageMode(); // 拼图模式下删光图片：先回到裁切视图再清空
     activeId = null;
     if (image && image.close) image.close();
     image = null;
@@ -556,6 +556,11 @@
   /* ---------- 侧边栏（实现决策 8） ---------- */
 
   function updateSidebarVisibility() {
+    if (collageMode) {
+      // 拼图模式侧边栏常驻（共享图片库），不影响裁切模式的可见性判断
+      els.sidebar.classList.remove('hidden');
+      return false;
+    }
     var empty = images.length === 0;
     var changed = els.sidebar.classList.contains('hidden') !== empty;
     els.sidebar.classList.toggle('hidden', empty);
@@ -1369,9 +1374,10 @@
     }
     saveActiveState(); // 当前裁切成果入库
     collageMode = true;
-    els.cropView.classList.add('hidden');
-    els.collageView.classList.remove('hidden');
-    els.collageSidebar.classList.remove('hidden');
+    els.cropMain.classList.add('hidden');
+    els.collageMain.classList.remove('hidden');
+    els.sidebar.classList.remove('hidden'); // 拼图模式侧边栏常驻（共享图片库）
+    els.collageOnly.classList.remove('hidden');
     els.cropModeBtn.classList.remove('active');
     els.collageModeBtn.classList.add('active');
     refreshThumbMarks();
@@ -1386,8 +1392,9 @@
       if (bm.source && bm.source.close) bm.source.close();
     });
     collageBitmaps.clear();
-    els.collageView.classList.add('hidden');
-    els.cropView.classList.remove('hidden');
+    els.collageMain.classList.add('hidden');
+    els.cropMain.classList.remove('hidden');
+    els.collageOnly.classList.add('hidden');
     els.collageModeBtn.classList.remove('active');
     els.cropModeBtn.classList.add('active');
     refreshThumbMarks();
@@ -1620,8 +1627,6 @@
   });
   els.clearCollageBtn.addEventListener('click', clearCollageSelection);
   els.backToCropBtn.addEventListener('click', exitCollageMode);
-  els.collageAddBtn.addEventListener('click', function () { els.fileInput.click(); });
-
   // 模式切换
   els.collageModeBtn.addEventListener('click', enterCollageMode);
   els.cropModeBtn.addEventListener('click', exitCollageMode);
