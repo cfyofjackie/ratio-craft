@@ -37,7 +37,7 @@
   /* ---------- 拼图模式（二期） ---------- */
   var collageMode = false;
   // selected：按入格顺序存放图片记录 id；layout：最近一次计算的布局缓存
-  var collage = { template: '3x3', selected: [], gap: 0, activeCell: -1, layout: null };
+  var collage = { template: '3x3', canvasRatio: '3:4', selected: [], gap: 0, activeCell: -1, layout: null };
   var collageBitmaps = new Map(); // recId -> { source } 预览用降采样位图（退出拼图模式时释放）
   var collageDecoding = false; // 拼图预览位图逐张解码防重入
 
@@ -624,10 +624,24 @@
 
     item.addEventListener('click', function () {
       if (collageMode) {
-        handleCollageThumbClick(rec); // 拼图模式：点选加入/替换
+        handleCollageThumbClick(rec); // 拼图模式：点选加入/取消/替换
         return;
       }
       activateImage(rec.id);
+    });
+
+    // 拼图模式：图片可直接拖进格子（所见即所得）
+    item.draggable = true;
+    item.addEventListener('dragstart', function (e) {
+      if (!collageMode) return;
+      item.classList.add('dragging');
+      try {
+        e.dataTransfer.setData('text/rc-image', String(rec.id));
+        e.dataTransfer.effectAllowed = 'copyMove';
+      } catch (e1) { /* 某些环境禁用 dataTransfer，忽略 */ }
+    });
+    item.addEventListener('dragend', function () {
+      item.classList.remove('dragging');
     });
 
     item.appendChild(img);
@@ -1199,14 +1213,21 @@
         canvasW = cursor;
       }
     } else {
-      // 田字/九宫：全部格子等大，画布比例 = 选中图裁切比例的平均值
+      // 田字/九宫：全部格子等大，画布比例由用户选择
+      // （默认 3:4；"自适应"= 选中图裁切比例的平均值，未选图时按 3:4）
       var cols = t === '2x2' ? 2 : 3;
       var rows = cols;
-      var sum = 0, cnt = 0;
-      for (i = 0; i < n; i++) {
-        if (infos[i]) { sum += infos[i].aspect; cnt++; }
+      var A;
+      if (collage.canvasRatio === 'auto') {
+        var sum = 0, cnt = 0;
+        for (i = 0; i < n; i++) {
+          if (infos[i]) { sum += infos[i].aspect; cnt++; }
+        }
+        A = cnt ? sum / cnt : 3 / 4;
+      } else {
+        var parts = collage.canvasRatio.split(':');
+        A = parseFloat(parts[0]) / parseFloat(parts[1]);
       }
-      var A = cnt ? sum / cnt : 1;
       var cellW, cellH;
       if (A >= 1) { cellW = 1080; cellH = 1080 / A; } else { cellH = 1080; cellW = 1080 * A; }
       canvasW = cols * cellW + (cols - 1) * gap;
@@ -1281,7 +1302,8 @@
     var availW = els.collageStage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     var availH = els.collageStage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
     if (availW <= 40 || availH <= 40) return;
-    var fit = Math.min(availW / layout.canvasW, availH / layout.canvasH, 1);
+    // 预览一律铺满预览区（允许放大显示；导出仍按 1080 基准，画质不受影响）
+    var fit = Math.min(availW / layout.canvasW, availH / layout.canvasH);
 
     var canvas = els.collageCanvas;
     var dw = Math.max(1, Math.floor(layout.canvasW * fit));
@@ -1320,7 +1342,7 @@
         ctx.textBaseline = 'middle';
         ctx.fillText('＋', cell.x + cell.w / 2, cell.y + cell.h / 2);
       }
-      if (collage.activeCell === i) {
+      if (collage.activeCell === i || cHoverCell === i) {
         ctx.strokeStyle = '#2563eb';
         ctx.lineWidth = 6 / fit; // 换算回拼图画布单位下保持视觉粗细
         ctx.strokeRect(cell.x + 3 / fit, cell.y + 3 / fit, cell.w - 6 / fit, cell.h - 6 / fit);
@@ -1411,7 +1433,7 @@
       toast('已保留前 ' + n + ' 张选择', 'ok');
     }
     if (collage.activeCell >= n) collage.activeCell = -1;
-    els.templateRow.querySelectorAll('.ratio-chip').forEach(function (chip) {
+    els.templateRow.querySelectorAll('[data-template]').forEach(function (chip) {
       chip.classList.toggle('active', chip.dataset.template === t);
     });
     ensureCollageBitmaps();
@@ -1437,7 +1459,11 @@
       return;
     }
     if (at >= 0 && target === -1) {
-      toast('已在拼图中（第 ' + (at + 1) + ' 格），点选格子后可移动', 'ok');
+      // 再点已选的图 = 取消（后方顺序前移补位）
+      collage.selected.splice(at, 1);
+      if (collage.activeCell >= collage.selected.length) collage.activeCell = -1;
+      renderCollage();
+      updateCollageUI();
       return;
     }
     if (at < 0 && target === -1 && collage.selected.length >= n) {
@@ -1468,6 +1494,7 @@
   // 拼图画布指针交互：点击选格 / 拖拽两格互换
   var cPoints = new Map();
   var cDrag = null; // { cellIndex, x, y, moved }
+  var cHoverCell = -1; // 拖拽悬停的目标格（视觉高亮）
 
   function collageCellAt(clientX, clientY) {
     var rect = els.collageCanvas.getBoundingClientRect();
@@ -1496,6 +1523,13 @@
     if (!cDrag || !cPoints.has(e.pointerId)) return;
     var p = cPoints.get(e.pointerId);
     if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > 6) cDrag.moved = true;
+    if (cDrag.moved) {
+      var over = collageCellAt(e.clientX, e.clientY);
+      if (over !== cHoverCell) {
+        cHoverCell = over;
+        renderCollage(); // 拖动中实时高亮落点格
+      }
+    }
   });
 
   function collagePointerRelease(e) {
@@ -1504,6 +1538,7 @@
     var startCell = cDrag.cell;
     var moved = cDrag.moved;
     cDrag = null;
+    cHoverCell = -1;
     if (collage.selected.length < 1) return;
     if (moved) {
       var over = collageCellAt(e.clientX, e.clientY);
@@ -1529,6 +1564,55 @@
   }
 
   els.collageCanvas.addEventListener('pointerup', collagePointerRelease);
+
+  // 侧边栏图片拖入格子
+  els.collageCanvas.addEventListener('dragover', function (e) {
+    if (!collageMode) return;
+    e.preventDefault();
+    var over = collageCellAt(e.clientX, e.clientY);
+    if (over !== cHoverCell) {
+      cHoverCell = over;
+      renderCollage(); // 拖动经过时实时高亮目标格
+    }
+  });
+  els.collageCanvas.addEventListener('dragleave', function () {
+    if (cHoverCell !== -1) {
+      cHoverCell = -1;
+      renderCollage();
+    }
+  });
+  els.collageCanvas.addEventListener('drop', function (e) {
+    if (!collageMode) return;
+    e.preventDefault();
+    var droppedOn = collageCellAt(e.clientX, e.clientY);
+    cHoverCell = -1;
+    var idStr = e.dataTransfer.getData('text/rc-image');
+    var id = idStr ? parseInt(idStr, 10) : NaN;
+    if (isNaN(id) || droppedOn < 0 || droppedOn >= templateCellCount(collage.template)) return;
+    var rec = findRecord(id);
+    if (!rec) return;
+    // 与目标格交换（目标为空格 = 移动/放入）
+    var at = collage.selected.indexOf(id);
+    if (at >= 0 && at !== droppedOn) {
+      if (droppedOn < collage.selected.length) {
+        collage.selected[at] = collage.selected[droppedOn];
+        collage.selected[droppedOn] = id;
+      } else {
+        collage.selected.splice(at, 1);
+        collage.selected.splice(droppedOn, 0, id);
+      }
+    } else if (at < 0) {
+      if (droppedOn < collage.selected.length) collage.selected[droppedOn] = id; // 替换该格
+      else if (droppedOn === collage.selected.length) collage.selected.push(id); // 放入下一空格
+      else {
+        toast('请按顺序填格子', 'error');
+        return;
+      }
+    }
+    ensureCollageBitmaps();
+    renderCollage();
+    updateCollageUI();
+  });
   els.collageCanvas.addEventListener('pointercancel', function () { cDrag = null; cPoints.clear(); });
 
   // 导出拼图：全分辨率逐格解码绘制（实现决策：cover 铺满，无留白）
@@ -1615,9 +1699,20 @@
   els.exportCollagePngBtn.addEventListener('click', function () { exportCollage('image/png'); });
 
   // 模板切换
-  els.templateRow.querySelectorAll('.ratio-chip').forEach(function (chip) {
+  els.templateRow.querySelectorAll('[data-template]').forEach(function (chip) {
     chip.addEventListener('click', function () {
       setCollageTemplate(chip.dataset.template);
+    });
+  });
+  // 田/九宫画布比例
+  els.templateRow.querySelectorAll('[data-canvas-ratio]').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      collage.canvasRatio = chip.dataset.canvasRatio;
+      els.templateRow.querySelectorAll('[data-canvas-ratio]').forEach(function (c2) {
+        c2.classList.toggle('active', c2 === chip);
+      });
+      renderCollage();
+      updateCollageUI();
     });
   });
   els.gapInput.addEventListener('input', function () {
