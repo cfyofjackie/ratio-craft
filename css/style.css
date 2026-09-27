@@ -903,9 +903,11 @@ body {
     display: inline-flex;
   }
 
-  /* 收起态：次要导出 / 画布组 / 工具组全部隐藏 */
+  /* 收起态：次要导出 / 画布组 / 工具组 / 裁切比例行全部隐藏。
+     比例自适应识别，当前值见信息行「比例：X」；想改再展开工具面板 */
   .export-extra,
   #cropMain .ops,
+  #cropMain .ratio-row,
   #collageMain .ops,
   #collageMain .canvas-group,
   .ratio-row .custom-ratio {
@@ -917,6 +919,10 @@ body {
     display: inline-flex;
     flex-wrap: wrap;
     justify-content: center;
+  }
+
+  #cropMain .show-tools .ratio-row {
+    display: flex;
   }
 
   #cropMain .show-tools .ops,
