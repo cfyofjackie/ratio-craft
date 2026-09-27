@@ -202,6 +202,31 @@ body {
   font-size: 12px;
 }
 
+/* 画布比例组（拼图）：移动端整体收进二级工具面板，桌面平铺 */
+.canvas-group {
+  display: inline-flex;
+  align-items: center;
+}
+
+.canvas-group > * + * {
+  margin-left: 8px;
+}
+
+/* 次要导出（PNG / 保存文件夹）：移动端收进二级工具面板，桌面平铺 */
+.export-extra {
+  display: inline-flex;
+  align-items: center;
+}
+
+.export-extra > * + * {
+  margin-left: 8px;
+}
+
+/* 二级工具开关：仅移动端显示 */
+.tools-toggle {
+  display: none;
+}
+
 #collageCanvas {
   display: block;
   background: #fff;
@@ -692,7 +717,11 @@ body {
 
 @media (max-width: 640px) {
   .topbar {
-    padding: 10px 14px;
+    padding: 56px 14px 10px; /* 顶部 56px 为挖孔/状态栏安全区固定兜底（容器 env() 可能为 0） */
+  }
+
+  .subtitle {
+    display: none; /* 小屏隐藏副标题，压缩顶栏高度 */
   }
 
   /* 决策 8：手机端侧边栏改为顶部横向滑动的缩略图条 */
@@ -837,6 +866,58 @@ body {
 
   .toast {
     bottom: 170px;
+  }
+
+  /* ---------- 二级工具面板（移动端） ---------- */
+
+  .tools-toggle {
+    display: inline-flex;
+  }
+
+  /* 收起态：次要导出 / 画布组 / 工具组全部隐藏 */
+  .export-extra,
+  #cropMain .ops,
+  #collageMain .ops,
+  #collageMain .canvas-group,
+  .ratio-row .custom-ratio {
+    display: none;
+  }
+
+  /* 展开态（.show-tools 挂在对应 .toolbar 上）：全部恢复 */
+  .show-tools .export-extra {
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  #cropMain .show-tools .ops,
+  #collageMain .show-tools .ops {
+    display: flex;
+  }
+
+  #collageMain .show-tools .canvas-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .show-tools .ratio-row .custom-ratio {
+    display: inline-flex;
+  }
+
+  /* 收起态比例行：单行横向滚动，不换行 */
+  .ratio-row {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .show-tools .ratio-row {
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow-x: visible;
   }
 }
 

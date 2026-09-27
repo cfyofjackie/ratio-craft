@@ -164,7 +164,7 @@
   // 实现决策 9：全部导出按钮与"列表非空"联动，导出期间禁用
   function updateExportAllBtn() {
     els.exportAllBtn.disabled = exporting || images.length === 0;
-    els.collageModeBtn.disabled = images.length === 0; // 无图时不能进拼图模式
+    // 拼图按钮不再联动图库：可直接进入，无图时在拼图页上传
   }
 
   /* ---------- IndexedDB 键值存取（实现决策 9） ----------
@@ -807,6 +807,14 @@
     var changed = updateSidebarVisibility();
     updateExportAllBtn();
     if (libCollapsed && images.length) setLibCollapsed(false); // 添加图片后自动展开图库（一次性反馈）
+    if (collageMode) {
+      // 拼图模式直接入库，不激活裁切视图；预解码新图供点选即用
+      ensureCollageBitmaps();
+      renderCollage();
+      updateCollageUI();
+      toast('已添加 ' + added.length + ' 张图片，点选加入拼图', 'ok');
+      return;
+    }
     if (changed) layoutFrame(); // 侧边栏首次出现导致预览区变窄（决策 12：构图保持）
     if (activeId === null) {
       activateImage(firstNewId); // 此前无激活图 → 自动激活第一张新图
@@ -1462,6 +1470,8 @@
     var full = sel >= n;
     els.exportCollageJpgBtn.disabled = !full || exporting;
     els.exportCollagePngBtn.disabled = !full || exporting;
+    // 库里没图且一格未选时显示引导（直接进拼图上传的场景）
+    els.collageEmpty.classList.toggle('hidden', sel > 0 || images.length > 0);
     refreshThumbMarks();
   }
 
@@ -1491,11 +1501,7 @@
 
   function enterCollageMode() {
     if (switching || exporting) return;
-    if (!images.length) {
-      toast('请先在裁切模式添加图片', 'error');
-      return;
-    }
-    saveActiveState(); // 当前裁切成果入库
+    saveActiveState(); // 当前裁切成果入库（无图时为空操作）
     collageMode = true;
     els.cropMain.classList.add('hidden');
     els.collageMain.classList.remove('hidden');
@@ -1835,12 +1841,25 @@
   });
   els.clearCollageBtn.addEventListener('click', clearCollageSelection);
   els.backToCropBtn.addEventListener('click', exitCollageMode);
+  // 移动端二级工具面板：收起时只留核心操作，展开显示全部工具
+  document.querySelectorAll('.tools-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var bar = btn.closest('.toolbar');
+      var open = !bar.classList.contains('show-tools');
+      bar.classList.toggle('show-tools', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.textContent = open ? '收起 ▴' : '工具 ▾';
+      // 工具栏高度变化，预览需按新的可用空间重排
+      if (collageMode) renderCollage();
+      else layoutFrame();
+    });
+  });
   // 模式切换
   els.collageModeBtn.addEventListener('click', enterCollageMode);
   els.cropModeBtn.addEventListener('click', exitCollageMode);
 
   function updateCollageModeBtn() {
-    els.collageModeBtn.disabled = images.length === 0;
+    els.collageModeBtn.disabled = false; // 拼图可直接进入，无图时在拼图页上传
   }
 
   /* ---------- 初始化 ---------- */
