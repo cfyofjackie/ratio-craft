@@ -37,7 +37,7 @@
   /* ---------- 拼图模式（二期） ---------- */
   var collageMode = false;
   // selected：按入格顺序存放图片记录 id；layout：最近一次计算的布局缓存
-  var collage = { template: '3x3', canvasRatio: '3:4', selected: [], gap: 0, activeCell: -1, layout: null };
+  var collage = { template: '3x3', canvasRatio: '3:4', selected: [], gap: 0, activeCell: -1, layout: null, exportScale: 1 };
   var collageBitmaps = new Map(); // recId -> { source } 预览用降采样位图（退出拼图模式时释放）
   var collageDecoding = false; // 拼图预览位图逐张解码防重入
 
@@ -79,6 +79,7 @@
     templateRow: $('templateRow'),
     gapInput: $('gapInput'),
     gapVal: $('gapVal'),
+    scaleRow: $('scaleRow'),
     collageInfo: $('collageInfo'),
     collageOutInfo: $('collageOutInfo'),
     exportCollageJpgBtn: $('exportCollageJpgBtn'),
@@ -1177,11 +1178,14 @@
     };
   }
 
-  // 按模板与已选图片计算布局（拼图画布像素；每格长边 1080）
-  function computeCollageLayout() {
+  // 按模板与已选图片计算布局（拼图画布像素；每格长边 = 1080 × scale）。
+  // scale=1 用于预览；导出按所选倍率重算，间距等比缩放，构图与预览一致。
+  function computeCollageLayout(scale) {
+    scale = scale || 1;
+    var base = 1080 * scale;
     var t = collage.template;
     var n = templateCellCount(t);
-    var gap = collage.gap;
+    var gap = collage.gap * scale;
     var infos = [];
     for (var i = 0; i < n; i++) {
       var rec = collage.selected[i] ? findRecord(collage.selected[i]) : null;
@@ -1191,23 +1195,23 @@
     var canvasW, canvasH;
 
     if (t === 'v2' || t === 'h2') {
-      // 上下：公共宽 1080，每格高按各自比例；左右：公共高 1080
+      // 上下：公共宽 = 基准，每格高按各自比例；左右：公共高 = 基准
       var cursor = 0;
       if (t === 'v2') {
-        canvasW = 1080;
+        canvasW = base;
         for (i = 0; i < n; i++) {
           var a = infos[i] ? infos[i].aspect : 4 / 3;
-          var h = 1080 / a;
-          cells.push({ x: 0, y: cursor, w: 1080, h: h, info: infos[i], rec: collage.selected[i] ? findRecord(collage.selected[i]) : null });
+          var h = base / a;
+          cells.push({ x: 0, y: cursor, w: base, h: h, info: infos[i], rec: collage.selected[i] ? findRecord(collage.selected[i]) : null });
           cursor += h + (i < n - 1 ? gap : 0);
         }
         canvasH = cursor;
       } else {
-        canvasH = 1080;
+        canvasH = base;
         for (i = 0; i < n; i++) {
           var a2 = infos[i] ? infos[i].aspect : 4 / 3;
-          var w = 1080 * a2;
-          cells.push({ x: cursor, y: 0, w: w, h: 1080, info: infos[i], rec: collage.selected[i] ? findRecord(collage.selected[i]) : null });
+          var w = base * a2;
+          cells.push({ x: cursor, y: 0, w: w, h: base, info: infos[i], rec: collage.selected[i] ? findRecord(collage.selected[i]) : null });
           cursor += w + (i < n - 1 ? gap : 0);
         }
         canvasW = cursor;
@@ -1229,7 +1233,7 @@
         A = parseFloat(parts[0]) / parseFloat(parts[1]);
       }
       var cellW, cellH;
-      if (A >= 1) { cellW = 1080; cellH = 1080 / A; } else { cellH = 1080; cellW = 1080 * A; }
+      if (A >= 1) { cellW = base; cellH = base / A; } else { cellH = base; cellW = base * A; }
       canvasW = cols * cellW + (cols - 1) * gap;
       canvasH = rows * cellH + (rows - 1) * gap;
       for (var r = 0; r < rows; r++) {
@@ -1302,7 +1306,7 @@
     var availW = els.collageStage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     var availH = els.collageStage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
     if (availW <= 40 || availH <= 40) return;
-    // 预览一律铺满预览区（允许放大显示；导出仍按 1080 基准，画质不受影响）
+    // 预览一律铺满预览区（允许放大显示；导出按所选倍率重算布局，画质不受预览影响）
     var fit = Math.min(availW / layout.canvasW, availH / layout.canvasH);
 
     var canvas = els.collageCanvas;
@@ -1355,9 +1359,30 @@
     var n = templateCellCount(collage.template);
     var sel = Math.min(collage.selected.length, n);
     els.collageInfo.textContent = '已选 ' + sel + '/' + n;
-    els.collageOutInfo.textContent = collage.layout
-      ? '输出：' + collage.layout.canvasW + ' × ' + collage.layout.canvasH
-      : '输出：–';
+
+    // 导出倍率：逐档按当前布局检查画布上限，超限档位置灰；
+    // 当前选中的档位若因换模板/比例变为超限，自动回退 1×
+    var fellBack = false;
+    els.scaleRow.querySelectorAll('[data-export-scale]').forEach(function (chip) {
+      var s = parseInt(chip.dataset.exportScale, 10) || 1;
+      var l = computeCollageLayout(s);
+      var over = RatioCraftUtils.isOverCanvasLimit(l.canvasW, l.canvasH);
+      chip.disabled = over;
+      if (over && s === collage.exportScale && s !== 1) {
+        collage.exportScale = 1;
+        fellBack = true;
+      }
+    });
+    if (fellBack) {
+      els.scaleRow.querySelectorAll('[data-export-scale]').forEach(function (chip) {
+        chip.classList.toggle('active', (parseInt(chip.dataset.exportScale, 10) || 1) === 1);
+      });
+      toast('当前布局超出画布上限，已切回 1× 导出', 'error');
+    }
+
+    // 输出尺寸按导出倍率显示（预览始终按 1× 布局渲染）
+    var exportLayout = computeCollageLayout(collage.exportScale);
+    els.collageOutInfo.textContent = '输出：' + exportLayout.canvasW + ' × ' + exportLayout.canvasH;
     var full = sel >= n;
     els.exportCollageJpgBtn.disabled = !full || exporting;
     els.exportCollagePngBtn.disabled = !full || exporting;
@@ -1615,10 +1640,11 @@
   });
   els.collageCanvas.addEventListener('pointercancel', function () { cDrag = null; cPoints.clear(); });
 
-  // 导出拼图：全分辨率逐格解码绘制（实现决策：cover 铺满，无留白）
+  // 导出拼图：全分辨率逐格解码绘制（实现决策：cover 铺满，无留白）。
+  // 按所选导出倍率重算布局（预览布局固定 1×），逐格仍从原图取像素。
   function exportCollage(mimeType) {
     if (exporting || switching) return;
-    var layout = collage.layout;
+    var layout = computeCollageLayout(collage.exportScale);
     if (!layout) return;
     var n = templateCellCount(collage.template);
     if (collage.selected.length < n) {
@@ -1719,6 +1745,17 @@
     collage.gap = parseInt(els.gapInput.value, 10) || 0;
     els.gapVal.textContent = String(collage.gap);
     renderCollage();
+  });
+  // 导出倍率（默认 1×；只影响导出尺寸，预览布局不变）
+  els.scaleRow.querySelectorAll('[data-export-scale]').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      if (chip.disabled) return;
+      collage.exportScale = parseInt(chip.dataset.exportScale, 10) || 1;
+      els.scaleRow.querySelectorAll('[data-export-scale]').forEach(function (c2) {
+        c2.classList.toggle('active', c2 === chip);
+      });
+      updateCollageUI();
+    });
   });
   els.clearCollageBtn.addEventListener('click', clearCollageSelection);
   els.backToCropBtn.addEventListener('click', exitCollageMode);

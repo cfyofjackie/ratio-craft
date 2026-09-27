@@ -151,7 +151,8 @@ body {
   outline-offset: -2px;
 }
 
-.gap-ctrl {
+.gap-ctrl,
+.scale-ctrl {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -361,6 +362,13 @@ body {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+
+/* 超出浏览器画布上限的导出倍率档位置灰 */
+.ratio-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .custom-ratio,
@@ -622,6 +630,7 @@ body {
 
   .sidebar {
     width: auto;
+    height: auto; /* 覆盖桌面端的 calc(100vh - 65px)：横条按内容自适应，否则会占满整屏挤掉主区 */
     flex-direction: row;
     align-items: center;
     padding: 8px 10px;
