@@ -662,15 +662,25 @@ body {
   }
 
   .stage {
-    padding: 12px;
+    padding: 8px;
   }
 
   .toolbar {
-    padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+    gap: 8px;
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  /* 手机端紧凑化：略缩按钮内边距，压缩工具栏高度、给预览区让空间 */
+  .ratio-chip {
+    padding: 6px 11px;
+  }
+
+  .btn {
+    padding: 6px 13px;
   }
 
   .controls-row {
-    gap: 10px;
+    gap: 8px;
   }
 
   .info {
