@@ -718,6 +718,13 @@ body {
 @media (max-width: 640px) {
   .topbar {
     padding: 56px 14px 10px; /* 顶部 56px 为挖孔/状态栏安全区固定兜底（容器 env() 可能为 0） */
+    justify-content: center; /* 模式切换居中：两侧让给容器的返回/转发/更多按钮 */
+  }
+
+  .brand,
+  #selectBtn {
+    display: none; /* 小屏隐藏品牌字样与顶栏上传按钮：与容器悬浮导航重叠；
+                      上传入口=空状态提示区 / 图库抽屉「＋添加」 */
   }
 
   .subtitle {
