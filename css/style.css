@@ -481,6 +481,11 @@ body {
   font-size: 13px;
 }
 
+/* 图库折叠头：仅手机端抽屉布局使用，桌面端不显示 */
+.lib-row {
+  display: none;
+}
+
 .thumb-list {
   flex: 1 1 0;
   min-height: 120px;
@@ -631,11 +636,62 @@ body {
   .sidebar {
     width: auto;
     height: auto; /* 覆盖桌面端的 calc(100vh - 65px)：横条按内容自适应，否则会占满整屏挤掉主区 */
-    flex-direction: row;
-    align-items: center;
+    flex-direction: column; /* 抽屉式：折叠头一行，缩略图条与拼图提示各占一行 */
+    align-items: stretch;
+    gap: 6px;
     padding: 8px 10px;
     border-right: none;
     border-bottom: 1px solid var(--border);
+  }
+
+  /* 图库折叠头（仅手机端显示） */
+  .lib-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .lib-toggle {
+    appearance: none;
+    border: none;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+  }
+
+  .lib-chevron {
+    display: inline-block;
+    transition: transform 0.15s;
+    color: var(--text-dim);
+  }
+
+  .sidebar.lib-collapsed .lib-chevron {
+    transform: rotate(-90deg);
+  }
+
+  /* 收起时隐藏缩略图条与拼图提示，只留折叠头一行 */
+  .sidebar.lib-collapsed .thumb-list,
+  .sidebar.lib-collapsed .collage-only {
+    display: none;
+  }
+
+  .collage-only {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .collage-only .collage-hint {
+    text-align: left;
   }
 
   .sidebar-add {
@@ -644,8 +700,8 @@ body {
   }
 
   .thumb-list {
-    flex: 1;
-    min-width: 0;
+    flex: 0 0 auto; /* 抽屉内按内容高度，不纵撑 */
+    min-height: 0;
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;

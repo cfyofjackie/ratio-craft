@@ -64,6 +64,9 @@
     saveDirBtn: $('saveDirBtn'),
     sidebar: $('sidebar'),
     thumbList: $('thumbList'),
+    libRow: document.querySelector('.lib-row'),
+    libToggle: $('libToggle'),
+    libCount: $('libCount'),
     addImagesBtn: $('addImagesBtn'),
     customRatioInput: $('customRatioInput'),
     customApplyBtn: $('customApplyBtn'),
@@ -556,7 +559,28 @@
 
   /* ---------- 侧边栏（实现决策 8） ---------- */
 
+  // 手机端图库抽屉：默认收起（偏好记忆），展开后连续选图不收起
+  var libCollapsed = true;
+  try {
+    if (localStorage.getItem('rcLibCollapsed') === '0') libCollapsed = false;
+  } catch (e) { /* 隐私模式等 localStorage 不可用时保持默认收起 */ }
+
+  function setLibCollapsed(collapsed) {
+    libCollapsed = collapsed;
+    try { localStorage.setItem('rcLibCollapsed', collapsed ? '1' : '0'); } catch (e) { /* 忽略 */ }
+    els.sidebar.classList.toggle('lib-collapsed', collapsed);
+    if (els.libToggle) els.libToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    // 收起/展开改变侧边栏高度，画布需按新的可用空间重排
+    if (collageMode) renderCollage();
+    else layoutFrame();
+  }
+
+  function updateLibCount() {
+    if (els.libCount) els.libCount.textContent = String(images.length);
+  }
+
   function updateSidebarVisibility() {
+    updateLibCount();
     if (collageMode) {
       // 拼图模式侧边栏常驻（共享图片库），不影响裁切模式的可见性判断
       els.sidebar.classList.remove('hidden');
@@ -734,6 +758,7 @@
     });
     var changed = updateSidebarVisibility();
     updateExportAllBtn();
+    if (libCollapsed && images.length) setLibCollapsed(false); // 添加图片后自动展开图库（一次性反馈）
     if (changed) layoutFrame(); // 侧边栏首次出现导致预览区变窄（决策 12：构图保持）
     if (activeId === null) {
       activateImage(firstNewId); // 此前无激活图 → 自动激活第一张新图
@@ -744,6 +769,9 @@
 
   els.addImagesBtn.addEventListener('click', function () {
     els.fileInput.click();
+  });
+  els.libToggle.addEventListener('click', function () {
+    setLibCollapsed(!libCollapsed);
   });
   els.selectBtn.addEventListener('click', function () {
     els.fileInput.click();
@@ -1775,6 +1803,7 @@
   });
   setButtonsEnabled(false);
   updateExportAllBtn();
+  els.sidebar.classList.toggle('lib-collapsed', libCollapsed); // 应用图库抽屉记忆状态
   els.gridBtn.classList.toggle('active', showGrid); // 同步井字格按钮选中态
   layoutFrame();
   if (hasFsAccess()) initSaveDir(); // 不支持 File System Access 的浏览器保持按钮隐藏

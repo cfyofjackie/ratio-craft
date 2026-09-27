@@ -29,9 +29,14 @@
 
   <!-- 两种模式共享的布局：侧边栏图片库常驻，主区随模式切换 -->
   <div class="layout">
-    <!-- 实现决策 8：批量缩略图侧边栏（桌面端左侧竖栏，手机端顶部横条），无图时隐藏 -->
+    <!-- 实现决策 8：批量缩略图侧边栏（桌面端左侧竖栏，手机端为可折叠抽屉），无图时隐藏 -->
     <aside class="sidebar hidden" id="sidebar">
-      <button id="addImagesBtn" class="btn btn-ghost sidebar-add" type="button" title="添加图片">＋ 添加</button>
+      <div class="lib-row">
+        <button id="libToggle" class="lib-toggle" type="button" aria-expanded="true" title="展开 / 收起图片库">
+          图库 <span id="libCount">0</span> 张<span class="lib-chevron" aria-hidden="true">▾</span>
+        </button>
+        <button id="addImagesBtn" class="btn btn-ghost sidebar-add" type="button" title="添加图片">＋ 添加</button>
+      </div>
       <div class="thumb-list" id="thumbList"></div>
       <!-- 拼图模式专属控件（实现决策：拼图二期） -->
       <div class="collage-only hidden">
