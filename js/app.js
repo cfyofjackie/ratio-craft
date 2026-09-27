@@ -27,7 +27,50 @@
   var exporting = false; // 导出期间防重入
   // 实现决策 10：当前图是否被用户手动改过比例（手动覆盖永久优先）
   var manualRatioSet = false;
-  // 实现决策 11：井字格辅助线开关，默认开启，用户偏好持久化到 localStorage
+
+  /* ---------- 偏好存储与容器能力 ---------- */
+
+  // 小工具容器 Storage API（客户端 9.46+）优先；不可用时降级浏览器 localStorage。
+  var miniToolApi = (function () {
+    var mt = window.xhs && window.xhs.miniTool;
+    return (mt && typeof mt.setStorage === 'function' && typeof mt.getStorage === 'function') ? mt : null;
+  })();
+
+  function savePref(key, val) {
+    var s = String(val);
+    try { localStorage.setItem(key, s); } catch (e) { /* 隐私模式等场景忽略 */ }
+    if (miniToolApi) {
+      miniToolApi.setStorage({ key: key, data: s }).catch(function () { /* localStorage 已兜底 */ });
+    }
+  }
+
+  // 同步先应用 localStorage 值，容器 Storage 异步返回后以容器值为准（callback 可能被调用两次）
+  function loadPref(key, callback) {
+    try { callback(localStorage.getItem(key)); } catch (e) { /* 忽略 */ }
+    if (miniToolApi) {
+      miniToolApi.getStorage({ key: key })
+        .then(function (res) { callback(res && 'data' in res ? res.data : null); })
+        .catch(function () { /* 保持 localStorage 值 */ });
+    }
+  }
+
+  /* Flex gap 布局行为检测：Chrome 61 基线 CSS 用子项 margin，
+     实际支持 Flex gap 的内核加 .supports-flex-gap 启用增强层（仅检测一次）。 */
+  (function () {
+    var flex = document.createElement('div');
+    flex.style.position = 'absolute';
+    flex.style.visibility = 'hidden';
+    flex.style.display = 'flex';
+    flex.style.flexDirection = 'column';
+    flex.style.rowGap = '1px';
+    flex.appendChild(document.createElement('div'));
+    flex.appendChild(document.createElement('div'));
+    document.body.appendChild(flex);
+    if (flex.scrollHeight === 1) document.documentElement.className += ' supports-flex-gap';
+    document.body.removeChild(flex);
+  })();
+
+  // 实现决策 11：井字格辅助线开关，默认开启，用户偏好持久化
   var showGrid = localStorage.getItem('rc-grid-on') !== '0';
   // 实现决策 9：全部导出统一使用 JPG 高画质（照片批量场景最通用，quality 0.98）
   var EXPORT_ALL_MIME = 'image/jpeg';
@@ -258,8 +301,13 @@
       });
   }
 
-  // 保存 Blob：有授权文件夹则直接写入，否则（或写入失败时）回退普通下载
+  // 保存成品 Blob：
+  // 1) 小工具容器（window.xhs.miniTool 可用）→ writeTempFile + 保存到系统相册（容器禁用 a[download] 下载）；
+  // 2) 浏览器 + 已授权保存文件夹 → 直接写入；
+  // 3) 浏览器兜底 → 普通下载。
   function saveBlob(blob, filename) {
+    var viaMiniTool = RatioCraftUtils.saveViaMiniTool(blob);
+    if (viaMiniTool) return viaMiniTool;
     if (!saveDirHandle) {
       RatioCraftUtils.downloadBlob(blob, filename);
       return Promise.resolve(false);
@@ -567,7 +615,7 @@
 
   function setLibCollapsed(collapsed) {
     libCollapsed = collapsed;
-    try { localStorage.setItem('rcLibCollapsed', collapsed ? '1' : '0'); } catch (e) { /* 忽略 */ }
+    savePref('rcLibCollapsed', collapsed ? '1' : '0');
     els.sidebar.classList.toggle('lib-collapsed', collapsed);
     if (els.libToggle) els.libToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
     // 收起/展开改变侧边栏高度，画布需按新的可用空间重排
@@ -871,7 +919,7 @@
   // 无图时 render 直接 return，不会画线
   els.gridBtn.addEventListener('click', function () {
     showGrid = !showGrid;
-    localStorage.setItem('rc-grid-on', showGrid ? '1' : '0');
+    savePref('rc-grid-on', showGrid ? '1' : '0');
     els.gridBtn.classList.toggle('active', showGrid);
     render();
   });
@@ -1806,5 +1854,18 @@
   els.sidebar.classList.toggle('lib-collapsed', libCollapsed); // 应用图库抽屉记忆状态
   els.gridBtn.classList.toggle('active', showGrid); // 同步井字格按钮选中态
   layoutFrame();
+  // 容器 Storage（异步）返回后以容器值为准，覆盖本地初始值
+  loadPref('rc-grid-on', function (v) {
+    var next = v !== '0';
+    if (next !== showGrid) {
+      showGrid = next;
+      els.gridBtn.classList.toggle('active', showGrid);
+      render();
+    }
+  });
+  loadPref('rcLibCollapsed', function (v) {
+    var next = v !== '0';
+    if (next !== libCollapsed) setLibCollapsed(next);
+  });
   if (hasFsAccess()) initSaveDir(); // 不支持 File System Access 的浏览器保持按钮隐藏
 })();

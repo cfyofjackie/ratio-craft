@@ -27,6 +27,10 @@ body {
   height: 100%;
 }
 
+html {
+  touch-action: manipulation; /* 双击缩放交给 Pointer Events 手势，页面 itself 不缩放 */
+}
+
 body {
   margin: 0;
   display: flex;
@@ -38,6 +42,8 @@ body {
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
 }
 
 /* ---------- 顶部 ---------- */
@@ -46,17 +52,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
   flex-wrap: wrap;
   padding: 12px 20px;
+  padding-top: calc(12px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+}
+
+/* Flex gap 的 Chrome 61 基线：子项单边 margin（支持 gap 的内核由文件末尾增强层接管） */
+.topbar > * + * {
+  margin-left: 12px;
 }
 
 .brand {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+}
+
+.brand > * + * {
+  margin-left: 10px;
 }
 
 .brand h1 {
@@ -74,16 +88,22 @@ body {
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 14px;
   flex-wrap: wrap;
+}
+
+.topbar-actions > * + * {
+  margin-left: 14px;
 }
 
 .privacy {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
   color: var(--text-dim);
   font-size: 12px;
+}
+
+.privacy > * + * {
+  margin-left: 5px;
 }
 
 /* ---------- 模式切换（拼图二期） ---------- */
@@ -96,6 +116,7 @@ body {
 }
 
 .mode-btn {
+  -webkit-appearance: none;
   appearance: none;
   border: none;
   background: var(--surface);
@@ -155,9 +176,13 @@ body {
 .scale-ctrl {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   color: var(--text-dim);
   font-size: 13px;
+}
+
+.gap-ctrl > * + *,
+.scale-ctrl > * + * {
+  margin-left: 8px;
 }
 
 .gap-ctrl input[type="range"] {
@@ -197,6 +222,7 @@ body {
 /* ---------- 按钮 ---------- */
 
 .btn {
+  -webkit-appearance: none;
   appearance: none;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -274,8 +300,12 @@ body {
 
 .frame-wrap {
   position: relative;
-  /* 透明区域棋盘格，方便查看 PNG 透明通道 */
-  background-image: conic-gradient(#eef0f3 0 25%, #fff 0 50%, #eef0f3 0 75%, #fff 0);
+  /* 透明区域棋盘格（双 linear-gradient 写法，Chrome 61 基线），方便查看 PNG 透明通道 */
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #eef0f3 25%, transparent 25%, transparent 75%, #eef0f3 75%),
+    linear-gradient(45deg, #eef0f3 25%, transparent 25%, transparent 75%, #eef0f3 75%);
+  background-position: 0 0, 8px 8px;
   background-size: 16px 16px;
   border: 1px solid var(--border-strong);
   border-radius: 4px;
@@ -297,12 +327,14 @@ body {
 
 .empty-hint {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
   color: var(--text-dim);
   cursor: pointer;
   border: 1px dashed var(--border-strong);
@@ -310,6 +342,10 @@ body {
   background: rgba(255, 255, 255, 0.85);
   text-align: center;
   padding: 12px;
+}
+
+.empty-hint > * + * {
+  margin-top: 10px;
 }
 
 .empty-hint.hidden {
@@ -326,21 +362,29 @@ body {
 .toolbar {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 20px calc(14px + env(safe-area-inset-bottom));
+  padding: 12px 20px 14px;
+  padding-bottom: calc(14px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   background: var(--surface);
   border-top: 1px solid var(--border);
+}
+
+.toolbar > * + * {
+  margin-top: 10px;
 }
 
 .ratio-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   flex-wrap: wrap;
 }
 
+.ratio-row > * + * {
+  margin-left: 8px;
+}
+
 .ratio-chip {
+  -webkit-appearance: none;
   appearance: none;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
@@ -375,7 +419,11 @@ body {
 .zoom-ctrl {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+}
+
+.custom-ratio > * + *,
+.zoom-ctrl > * + * {
+  margin-left: 6px;
 }
 
 #customRatioInput,
@@ -412,26 +460,36 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
   flex-wrap: wrap;
+}
+
+.controls-row > * + * {
+  margin-left: 16px;
 }
 
 .ops,
 .exports {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.ops > * + *,
+.exports > * + * {
+  margin-left: 8px;
 }
 
 .info {
   display: flex;
   align-items: center;
-  gap: 14px;
   flex-wrap: wrap;
   color: var(--text-dim);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
+}
+
+.info > * + * {
+  margin-left: 14px;
 }
 
 .info .warn {
@@ -463,11 +521,14 @@ body {
   height: calc(100vh - 65px); /* 视口高减顶栏，保证列表可用空间最大化 */
   display: flex;
   flex-direction: column;
-  gap: 8px;
   padding: 10px 8px;
   min-height: 0;
   background: var(--surface);
   border-right: 1px solid var(--border);
+}
+
+.sidebar > * + * {
+  margin-top: 8px;
 }
 
 .sidebar.hidden {
@@ -490,17 +551,22 @@ body {
   flex: 1 1 0;
   min-height: 120px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
-  gap: 10px;
   padding: 2px;
+}
+
+.thumb-list > * + * {
+  margin-top: 10px;
 }
 
 .thumb-item {
   position: relative;
   flex: none;
   width: 100%;
-  aspect-ratio: 1 / 1; /* 小方图（不支持的旧浏览器上为自动高度，仅影响观感） */
+  height: 148px; /* Chrome 61 基线：侧边栏内容宽恒为 148px，固定高即为 1:1 方图 */
+  aspect-ratio: 1 / 1; /* 增强层：支持时按容器实际宽度自适应正方 */
   border: 2px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
@@ -595,6 +661,7 @@ body {
   left: 50%;
   bottom: 140px;
   transform: translateX(-50%) translateY(8px);
+  max-width: 480px;
   max-width: min(86vw, 480px);
   padding: 10px 18px;
   border-radius: 8px;
@@ -638,10 +705,13 @@ body {
     height: auto; /* 覆盖桌面端的 calc(100vh - 65px)：横条按内容自适应，否则会占满整屏挤掉主区 */
     flex-direction: column; /* 抽屉式：折叠头一行，缩略图条与拼图提示各占一行 */
     align-items: stretch;
-    gap: 6px;
     padding: 8px 10px;
     border-right: none;
     border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar > * + * {
+    margin-top: 6px; /* 覆盖桌面端行距（基线 margin 方案） */
   }
 
   /* 图库折叠头（仅手机端显示） */
@@ -649,10 +719,14 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+  }
+
+  .lib-row > * + * {
+    margin-left: 8px;
   }
 
   .lib-toggle {
+    -webkit-appearance: none;
     appearance: none;
     border: none;
     background: none;
@@ -663,8 +737,11 @@ body {
     padding: 4px 2px;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
     cursor: pointer;
+  }
+
+  .lib-toggle > * + * {
+    margin-left: 5px;
   }
 
   .lib-chevron {
@@ -707,6 +784,11 @@ body {
     overflow-y: hidden;
   }
 
+  .thumb-list > * + * {
+    margin-top: 0; /* 横条方向：清桌面端纵向间距，改横向 */
+    margin-left: 10px;
+  }
+
   .thumb-item {
     width: 56px;
     height: 56px;
@@ -722,8 +804,12 @@ body {
   }
 
   .toolbar {
-    gap: 8px;
-    padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+    padding: 8px 10px 10px;
+    padding-bottom: calc(10px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  }
+
+  .toolbar > * + * {
+    margin-top: 8px; /* 覆盖桌面端行距（基线 margin 方案） */
   }
 
   /* 手机端紧凑化：略缩按钮内边距，压缩工具栏高度、给预览区让空间 */
@@ -735,12 +821,15 @@ body {
     padding: 6px 13px;
   }
 
-  .controls-row {
-    gap: 8px;
+  .controls-row > * + * {
+    margin-left: 8px;
+  }
+
+  .info > * + * {
+    margin-left: 10px;
   }
 
   .info {
-    gap: 10px;
     order: 3; /* 小屏时信息行换到按钮下方 */
     width: 100%;
     justify-content: center;
@@ -749,4 +838,61 @@ body {
   .toast {
     bottom: 170px;
   }
+}
+
+/* ---------- Flex gap 增强层 ----------
+   Chrome 61 基线用各规则处的子项单边 margin；JS 启动时做布局行为检测
+   （supportsFlexGap），支持 Flex gap 的内核加 .supports-flex-gap 启用本段并清除 margin。 */
+
+.supports-flex-gap .topbar { gap: 12px; }
+.supports-flex-gap .brand { gap: 10px; }
+.supports-flex-gap .topbar-actions { gap: 14px; }
+.supports-flex-gap .privacy { gap: 5px; }
+.supports-flex-gap .gap-ctrl,
+.supports-flex-gap .scale-ctrl { gap: 8px; }
+.supports-flex-gap .empty-hint { gap: 10px; }
+.supports-flex-gap .toolbar { gap: 10px; }
+.supports-flex-gap .ratio-row { gap: 8px; }
+.supports-flex-gap .custom-ratio,
+.supports-flex-gap .zoom-ctrl { gap: 6px; }
+.supports-flex-gap .controls-row { gap: 16px; }
+.supports-flex-gap .ops,
+.supports-flex-gap .exports { gap: 8px; }
+.supports-flex-gap .info { gap: 14px; }
+.supports-flex-gap .sidebar { gap: 8px; }
+.supports-flex-gap .thumb-list { gap: 10px; }
+.supports-flex-gap .lib-row { gap: 8px; }
+.supports-flex-gap .lib-toggle { gap: 5px; }
+
+.supports-flex-gap .topbar > * + *,
+.supports-flex-gap .brand > * + *,
+.supports-flex-gap .topbar-actions > * + *,
+.supports-flex-gap .privacy > * + *,
+.supports-flex-gap .gap-ctrl > * + *,
+.supports-flex-gap .scale-ctrl > * + *,
+.supports-flex-gap .ratio-row > * + *,
+.supports-flex-gap .custom-ratio > * + *,
+.supports-flex-gap .zoom-ctrl > * + *,
+.supports-flex-gap .controls-row > * + *,
+.supports-flex-gap .ops > * + *,
+.supports-flex-gap .exports > * + *,
+.supports-flex-gap .info > * + *,
+.supports-flex-gap .lib-row > * + *,
+.supports-flex-gap .lib-toggle > * + * {
+  margin-left: 0;
+}
+
+.supports-flex-gap .empty-hint > * + *,
+.supports-flex-gap .toolbar > * + *,
+.supports-flex-gap .sidebar > * + *,
+.supports-flex-gap .thumb-list > * + * {
+  margin-top: 0;
+  margin-left: 0;
+}
+
+@media (max-width: 640px) {
+  .supports-flex-gap .toolbar { gap: 8px; }
+  .supports-flex-gap .controls-row { gap: 8px; }
+  .supports-flex-gap .info { gap: 10px; }
+  .supports-flex-gap .sidebar { gap: 6px; }
 }

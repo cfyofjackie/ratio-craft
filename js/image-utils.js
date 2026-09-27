@@ -200,9 +200,46 @@
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(function () {
-      URL.revokeObjectURL(url);
-    }, 5000);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 3000);
+  };
+
+  /*
+   * blob 转 data URL（FileReader），供小工具容器 writeTempFile 使用。
+   */
+  utils.blobToDataUrl = function (blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result)); };
+      reader.onerror = function () { reject(new Error('读取图片数据失败')); };
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  /*
+   * 小工具容器内的保存能力：base64 → writeTempFile 临时文件 → 保存到系统相册。
+   * 返回 Promise<boolean>（true = 已保存）；容器能力不可用时返回 null（由调用方降级）。
+   */
+  utils.saveViaMiniTool = function (blob) {
+    var miniTool = global && global.xhs && global.xhs.miniTool;
+    if (!miniTool ||
+        typeof miniTool.writeTempFile !== 'function' ||
+        typeof miniTool.saveImageToPhotosAlbum !== 'function') {
+      return null;
+    }
+    return utils
+      .blobToDataUrl(blob)
+      .then(function (dataUrl) {
+        return miniTool.writeTempFile({ data: dataUrl });
+      })
+      .then(function (res) {
+        return miniTool.saveImageToPhotosAlbum({ filePath: res && res.filePath });
+      })
+      .then(function () {
+        return true;
+      })
+      .catch(function (err) {
+        throw new Error((err && err.errMsg) || '保存到相册失败');
+      });
   };
 
   /*
